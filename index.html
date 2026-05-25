@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Glucose Tracker!</title>
+<title>Glucose Tracker</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -66,7 +66,7 @@ tbody tr:hover td{background:#fafafa}
   <div class="header">
     <div class="title">
       <i class="ti ti-activity"></i>
-      Glucose Tracker!
+      Glucose Tracker
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn" id="addDayBtn"><i class="ti ti-calendar-plus"></i> Tag anlegen</button>
@@ -108,8 +108,7 @@ tbody tr:hover td{background:#fafafa}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 <script>
-let apiKey = '$2a$10$7j3QcuDMm3O/KbU5YdTQfeGjVUWQ4mg4SZKWJ/TaaJj1oVkiIN01C';
-let binId = '6a144039db2b134717b30cf0';
+const API = 'https://glucose-tracker-6hw7.onrender.com';
 let allData = [], comments = {}, weeks = [], currentWeek = 0, editingCell = null, saving = false;
 
 const $ = id => document.getElementById(id);
@@ -255,34 +254,22 @@ async function commitEdit(){
 }
 
 async function loadData(){
-  if(!apiKey) return;
-  if(!binId){ $('connStatus').textContent='⚡ Kein Bin vorhanden – wird beim ersten Speichern erstellt.'; return; }
   try{
-    $('connStatus').textContent='Lade Daten...';
-    const r=await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`,{headers:{'X-Master-Key':apiKey}});
+    const r=await fetch(API+'/data');
     if(!r.ok) throw new Error(r.status);
     const j=await r.json();
-    allData=j.record.data||[]; comments=j.record.comments||{};
+    allData=j.data||[]; comments=j.comments||{};
     buildWeeks(); currentWeek=Math.max(0,weeks.length-1); renderTable();
   }catch(e){
-    $('connStatus').textContent='❌ Fehler – API-Key oder Bin-ID prüfen.';
+    toast('Server schläft noch – bitte in 30 Sek. neu laden.',4000);
   }
 }
 
 async function saveData(){
-  if(!apiKey||saving) return; saving=true;
+  if(saving) return; saving=true;
   try{
-    const body=JSON.stringify({data:allData,comments});
-    if(!binId){
-      const r=await fetch('https://api.jsonbin.io/v3/b',{method:'POST',headers:{'Content-Type':'application/json','X-Master-Key':apiKey,'X-Bin-Name':'glucose-tracker'},body});
-      if(!r.ok) throw new Error(await r.text());
-      const j=await r.json(); binId=j.metadata.id;
-      localStorage.setItem('gb_binId',binId); $('binIdInput').value=binId;
-      $('connStatus').textContent=`✅ Bin erstellt: ${binId}`;
-    } else {
-      const r=await fetch(`https://api.jsonbin.io/v3/b/${binId}`,{method:'PUT',headers:{'Content-Type':'application/json','X-Master-Key':apiKey},body});
-      if(!r.ok) throw new Error(await r.text());
-    }
+    const r=await fetch(`${API}/data`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:allData,comments})});
+    if(!r.ok) throw new Error(await r.text());
   }catch(e){ toast('Speicherfehler: '+e.message,4000); }
   finally{ saving=false; }
 }
