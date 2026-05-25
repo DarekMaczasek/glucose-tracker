@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Glucose Tracker</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8f9fa;color:#1a1a1a;min-height:100vh;padding:1.5rem}
+.wrap{max-width:960px;margin:0 auto}
+.header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:1.5rem}
+.title{font-size:20px;font-weight:600;color:#1a1a1a;display:flex;align-items:center;gap:8px}
+.title i{color:#1D9E75;font-size:22px}
+.btn{padding:8px 16px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid #ddd;background:#fff;color:#1a1a1a;transition:background 0.15s;display:inline-flex;align-items:center;gap:6px;text-decoration:none}
+.btn:hover{background:#f0f0f0}
+.btn-primary{background:#1D9E75;color:#fff;border-color:#1D9E75}
+.btn-primary:hover{background:#0F6E56}
+.setup-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:1.25rem;margin-bottom:1.5rem}
+.setup-card h3{font-size:14px;font-weight:600;color:#374151;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.setup-card p{font-size:12px;color:#6b7280;margin-bottom:10px}
+.setup-card a{color:#1D9E75}
+.setup-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.setup-row input[type=text]{flex:1;min-width:200px;padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;outline:none}
+.setup-row input[type=text]:focus{border-color:#1D9E75;box-shadow:0 0 0 3px rgba(29,158,117,.1)}
+#connStatus{font-size:12px;color:#6b7280;margin-top:8px}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:1.5rem}
+.metric{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:.75rem 1rem}
+.metric-label{font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.metric-val{font-size:22px;font-weight:600;color:#1a1a1a}
+.week-nav{display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:.5rem .75rem;margin-bottom:1rem}
+.week-nav span{font-size:13px;font-weight:500;color:#6b7280}
+.week-nav button{padding:4px 12px;border-radius:8px;border:1px solid #e5e7eb;background:#fff;cursor:pointer;font-size:18px;line-height:1;color:#1a1a1a}
+.week-nav button:disabled{opacity:.25;cursor:default}
+.table-wrap{background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;overflow-x:auto;margin-bottom:1.5rem}
+table{width:100%;border-collapse:collapse;min-width:620px}
+thead tr{background:#f9fafb}
+th{padding:10px 12px;font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;text-align:center;border-bottom:1px solid #f0f0f0}
+th:first-child,th:last-child{text-align:left}
+td{padding:8px 10px;font-size:13px;text-align:center;border-bottom:1px solid #f9fafb}
+td:first-child{text-align:left;font-weight:600;color:#374151;font-size:12px;white-space:nowrap}
+td:last-child{text-align:left}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:#fafafa}
+.val{display:inline-block;padding:3px 8px;border-radius:6px;font-weight:600;font-size:12px;min-width:42px;text-align:center}
+.val-low{background:#fee2e2;color:#b91c1c}
+.val-ok{background:#dcfce7;color:#15803d}
+.val-high{background:#fef3c7;color:#b45309}
+.val-empty{color:#d1d5db;cursor:pointer;font-size:18px;line-height:1}
+.val-empty:hover{color:#1D9E75}
+.val-edit{width:60px;font-size:12px;text-align:center;padding:3px 6px;border-radius:6px;border:2px solid #1D9E75;outline:none}
+.note-input{width:100%;font-size:12px;border:none;background:transparent;color:#9ca3af;font-style:italic;outline:none}
+.note-input:focus{color:#374151}
+.note-input::placeholder{color:#e5e7eb}
+.legend{display:flex;gap:16px;font-size:11px;color:#9ca3af}
+.legend-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px}
+.footer-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;background:#1a1a1a;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:99}
+.toast.show{opacity:1}
+.empty-state{padding:3rem 1rem;text-align:center;color:#9ca3af;font-size:14px}
+.empty-state i{font-size:36px;opacity:.3;display:block;margin-bottom:.5rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div class="title">
+      <i class="ti ti-activity"></i>
+      Glucose Tracker
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn" id="addDayBtn"><i class="ti ti-calendar-plus"></i> Tag anlegen</button>
+      <label class="btn btn-primary" style="cursor:pointer">
+        <i class="ti ti-upload"></i> CSV importieren
+        <input type="file" accept=".csv" id="csvInput" style="display:none">
+      </label>
+    </div>
+  </div>
+
+  <p id="connStatus" style="display:none"></p>
+
+  <div class="metrics" id="metricsRow" style="display:none">
+    <div class="metric"><div class="metric-label">Ø Woche</div><div class="metric-val" id="avgVal">-</div></div>
+    <div class="metric"><div class="metric-label">Tiefstwert</div><div class="metric-val" id="minVal">-</div></div>
+    <div class="metric"><div class="metric-label">Höchstwert</div><div class="metric-val" id="maxVal">-</div></div>
+    <div class="metric"><div class="metric-label">Zeitraum</div><div class="metric-val" style="font-size:14px" id="rangeVal">-</div></div>
+  </div>
+
+  <div id="mainContent">
+    <div class="empty-state">
+      <i class="ti ti-file-import"></i>
+      API-Key eingeben und CSV hochladen um zu starten.
+    </div>
+  </div>
+
+  <div class="footer-row" id="footerRow" style="display:none">
+    <div class="legend">
+      <span><span class="legend-dot" style="background:#b91c1c"></span>&lt; 80 mg/dL</span>
+      <span><span class="legend-dot" style="background:#15803d"></span>80–150 mg/dL</span>
+      <span><span class="legend-dot" style="background:#b45309"></span>&gt; 150 mg/dL</span>
+    </div>
+    <button class="btn" id="exportBtn"><i class="ti ti-download"></i> PDF exportieren</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+<script>
+let apiKey = '$2a$10$7j3QcuDMm3O/KbU5YdTQfeGjVUWQ4mg4SZKWJ/TaaJj1oVkiIN01C';
+let binId = '6a143caadb2b134717b2ef94';
+let allData = [], comments = {}, weeks = [], currentWeek = 0, editingCell = null, saving = false;
+
+const $ = id => document.getElementById(id);
+
+function toast(msg, ms=2500){
+  const t=$('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), ms);
+}
+
+function getClass(v){
+  if(v===null||v===undefined||isNaN(v)) return '';
+  if(v<80) return 'val-low';
+  if(v<=150) return 'val-ok';
+  return 'val-high';
+}
+
+function fmtDate(d){ const p=d.split('-'); return `${p[2]}.${p[1]}`; }
+function dayName(d){ return ['So','Mo','Di','Mi','Do','Fr','Sa'][new Date(d).getDay()]; }
+
+function buildWeeks(){
+  const daysMap={};
+  allData.forEach(p=>{ if(!daysMap[p.d]) daysMap[p.d]=[]; daysMap[p.d].push(p); });
+  const allDates=[...new Set([...Object.keys(daysMap),...Object.keys(comments)])].sort();
+  if(!allDates.length){ weeks=[]; return; }
+
+  const first=new Date(allDates[0]);
+  const last=new Date(allDates[allDates.length-1]);
+  const dow=first.getDay(); const diff=dow===0?6:dow-1;
+  const start=new Date(first); start.setDate(start.getDate()-diff);
+
+  weeks=[]; let wk=[];
+  const iter=new Date(start);
+  while(iter<=last||wk.length>0){
+    const y=iter.getFullYear(), mo=String(iter.getMonth()+1).padStart(2,'0'), dy=String(iter.getDate()).padStart(2,'0');
+    const key=`${y}-${mo}-${dy}`;
+    const pts=daysMap[key]||[];
+    const findNear=h=>{
+      if(!pts.length) return null;
+      const p=pts.reduce((a,b)=>Math.abs(b.h-h)<Math.abs(a.h-h)?b:a);
+      return Math.abs(p.h-h)<=2?p.v:null;
+    };
+    const minPt=pts.length?pts.reduce((a,b)=>b.v<a.v?b:a):null;
+    wk.push({key, label:`${dayName(key)}, ${fmtDate(key)}`, preAm:findNear(7), plus6:findNear(13), plus8:findNear(15), prePm:findNear(19), min:minPt?minPt.v:null, minT:minPt?minPt.t:null, pts, note:comments[key]||''});
+    if(wk.length===7){ weeks.push(wk); wk=[]; }
+    iter.setDate(iter.getDate()+1);
+    if(iter>last&&wk.length===0) break;
+  }
+  if(wk.length) weeks.push(wk);
+}
+
+function renderTable(){
+  const mc=$('mainContent');
+  if(!weeks.length){
+    mc.innerHTML='<div class="empty-state"><i class="ti ti-file-import"></i>Noch keine Daten. CSV hochladen oder Tag anlegen.</div>';
+    $('footerRow').style.display='none'; $('metricsRow').style.display='none'; return;
+  }
+  currentWeek=Math.min(currentWeek, weeks.length-1);
+  const w=weeks[currentWeek];
+  $('footerRow').style.display='flex'; $('metricsRow').style.display='grid';
+
+  let allVals=[]; w.forEach(r=>r.pts.forEach(p=>allVals.push(p.v)));
+  $('avgVal').textContent=allVals.length?Math.round(allVals.reduce((a,b)=>a+b,0)/allVals.length)+' mg/dL':'-';
+  $('minVal').textContent=allVals.length?Math.min(...allVals)+' mg/dL':'-';
+  $('maxVal').textContent=allVals.length?Math.max(...allVals)+' mg/dL':'-';
+  $('rangeVal').textContent=w.length?`${fmtDate(w[0].key)} – ${fmtDate(w[w.length-1].key)}`:'-';
+
+  function cellHtml(row, field){
+    const v=row[field];
+    const isEdit=editingCell&&editingCell.key===row.key&&editingCell.field===field;
+    if(isEdit) return `<input class="val val-edit" id="editInput" type="number" value="${editingCell.val}" min="0" max="600" data-key="${row.key}" data-field="${field}">`;
+    if(v===null) return `<span class="val val-empty" data-key="${row.key}" data-field="${field}" title="Klicken zum Eingeben">+</span>`;
+    return `<span class="val ${getClass(v)}" data-key="${row.key}" data-field="${field}" style="cursor:pointer" title="Klicken zum Bearbeiten">${v}</span>`;
+  }
+
+  const rows=w.map(r=>`
+    <tr>
+      <td>${r.label}</td>
+      <td>${cellHtml(r,'preAm')}</td>
+      <td>${cellHtml(r,'plus6')}</td>
+      <td>${cellHtml(r,'plus8')}</td>
+      <td>${cellHtml(r,'prePm')}</td>
+      <td>${r.min!==null?`<span class="val ${getClass(r.min)}">${r.min}</span><br><span style="font-size:10px;color:#9ca3af">${r.minT}</span>`:'-'}</td>
+      <td><input class="note-input" placeholder="Notiz..." value="${(r.note||'').replace(/"/g,'&quot;')}" data-notekey="${r.key}"></td>
+    </tr>`).join('');
+
+  mc.innerHTML=`
+    <div class="week-nav">
+      <button id="prevWk" ${currentWeek===0?'disabled':''}>&#8249;</button>
+      <span>Woche ${currentWeek+1} von ${weeks.length}</span>
+      <button id="nextWk" ${currentWeek===weeks.length-1?'disabled':''}>&#8250;</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th style="text-align:left">Tag</th>
+          <th>Pre AM</th><th>+6h</th><th>+8h</th><th>Pre PM</th>
+          <th style="color:#1D9E75">Tiefstwert</th>
+          <th style="text-align:left">Notiz</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+
+  $('prevWk').onclick=()=>{ if(currentWeek>0){ currentWeek--; renderTable(); } };
+  $('nextWk').onclick=()=>{ if(currentWeek<weeks.length-1){ currentWeek++; renderTable(); } };
+
+  mc.querySelectorAll('.val[data-key],.val-empty[data-key]').forEach(el=>{
+    el.addEventListener('click',()=>{
+      const k=el.dataset.key, f=el.dataset.field;
+      const row=weeks.flat().find(r=>r.key===k);
+      editingCell={key:k, field:f, val:row?row[f]||'':''};
+      renderTable();
+      const inp=$('editInput');
+      if(inp){
+        inp.focus(); inp.select();
+        inp.addEventListener('keydown',e=>{ if(e.key==='Enter') commitEdit(); if(e.key==='Escape'){editingCell=null;renderTable();} });
+        inp.addEventListener('blur',()=>setTimeout(commitEdit,100));
+      }
+    });
+  });
+
+  mc.querySelectorAll('.note-input').forEach(inp=>{
+    inp.addEventListener('change',async()=>{
+      comments[inp.dataset.notekey]=inp.value;
+      await saveData();
+    });
+  });
+}
+
+async function commitEdit(){
+  if(!editingCell) return;
+  const inp=$('editInput'); if(!inp) return;
+  const val=inp.value.trim();
+  const{key,field}=editingCell; editingCell=null;
+  const hMap={preAm:7,plus6:13,plus8:15,prePm:19};
+  const h=hMap[field]; const t=`${String(h).padStart(2,'0')}:00`;
+  allData=allData.filter(p=>!(p.d===key&&p.h===h));
+  if(val!==''&&!isNaN(parseInt(val))){
+    allData.push({d:key,h,t,v:parseInt(val),id:`${key}_${t}`});
+  }
+  buildWeeks(); renderTable();
+  await saveData(); toast('Gespeichert ✓');
+}
+
+async function loadData(){
+  if(!apiKey) return;
+  if(!binId){ $('connStatus').textContent='⚡ Kein Bin vorhanden – wird beim ersten Speichern erstellt.'; return; }
+  try{
+    $('connStatus').textContent='Lade Daten...';
+    const r=await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`,{headers:{'X-Master-Key':apiKey}});
+    if(!r.ok) throw new Error(r.status);
+    const j=await r.json();
+    allData=j.record.data||[]; comments=j.record.comments||{};
+    buildWeeks(); currentWeek=Math.max(0,weeks.length-1); renderTable();
+  }catch(e){
+    $('connStatus').textContent='❌ Fehler – API-Key oder Bin-ID prüfen.';
+  }
+}
+
+async function saveData(){
+  if(!apiKey||saving) return; saving=true;
+  try{
+    const body=JSON.stringify({data:allData,comments});
+    if(!binId){
+      const r=await fetch('https://api.jsonbin.io/v3/b',{method:'POST',headers:{'Content-Type':'application/json','X-Master-Key':apiKey,'X-Bin-Name':'glucose-tracker'},body});
+      if(!r.ok) throw new Error(await r.text());
+      const j=await r.json(); binId=j.metadata.id;
+      localStorage.setItem('gb_binId',binId); $('binIdInput').value=binId;
+      $('connStatus').textContent=`✅ Bin erstellt: ${binId}`;
+    } else {
+      const r=await fetch(`https://api.jsonbin.io/v3/b/${binId}`,{method:'PUT',headers:{'Content-Type':'application/json','X-Master-Key':apiKey},body});
+      if(!r.ok) throw new Error(await r.text());
+    }
+  }catch(e){ toast('Speicherfehler: '+e.message,4000); }
+  finally{ saving=false; }
+}
+
+function parseCSV(text){
+  const lines=text.split('\n');
+  const hi=lines.findIndex(l=>l.includes('Gerätezeitstempel'));
+  if(hi===-1){ toast('CSV-Format nicht erkannt',3000); return 0; }
+  const hdrs=lines[hi].split(',');
+  const ti=hdrs.findIndex(h=>h.includes('Gerätezeitstempel'));
+  const vi=hdrs.findIndex(h=>h.includes('Glukosewert-Verlauf'));
+  const si=hdrs.findIndex(h=>h.includes('Glukose-Scan'));
+  const existing=new Set(allData.map(p=>p.id));
+  let added=0;
+  for(let i=hi+1;i<lines.length;i++){
+    const c=lines[i].split(','); if(c.length<=Math.max(ti,vi)) continue;
+    const ts=c[ti]?.replace(/"/g,''); const vs=(c[vi]||c[si]||'').replace(/"/g,'');
+    if(!ts||!vs||isNaN(parseInt(vs))) continue;
+    const[dp,tp]=ts.split(' '); if(!dp||!tp) continue;
+    const[day,mo,yr]=dp.split('-'); const[hh,mm]=tp.split(':');
+    const dkey=`${yr}-${mo.padStart(2,'0')}-${day.padStart(2,'0')}`;
+    const tkey=`${hh.padStart(2,'0')}:${mm.padStart(2,'0')}`;
+    const id=`${dkey}_${tkey}`;
+    if(!existing.has(id)){ allData.push({d:dkey,h:parseInt(hh),t:tkey,v:parseInt(vs),id}); existing.add(id); added++; }
+  }
+  return added;
+}
+
+$('csvInput').addEventListener('change',async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const text=await f.text();
+  const n=parseCSV(text);
+  if(n===0){ toast('Keine neuen Werte gefunden'); return; }
+  buildWeeks(); currentWeek=Math.max(0,weeks.length-1); renderTable();
+  await saveData(); toast(`${n} neue Messwerte importiert ✓`);
+  e.target.value='';
+});
+
+
+$('addDayBtn').addEventListener('click',()=>{
+  const d=prompt('Datum (YYYY-MM-DD):');
+  if(!d||!/^\d{4}-\d{2}-\d{2}$/.test(d)){ toast('Ungültiges Format'); return; }
+  if(!comments[d]) comments[d]='';
+  buildWeeks(); renderTable(); saveData();
+  const wi=weeks.findIndex(w=>w.some(r=>r.key===d));
+  if(wi>=0){ currentWeek=wi; renderTable(); }
+  toast('Tag angelegt');
+});
+
+$('exportBtn').addEventListener('click',()=>{
+  const jsPDF=window.jspdf?.jsPDF;
+  if(!jsPDF){ toast('PDF-Bibliothek lädt noch...',3000); return; }
+  const w=weeks[currentWeek]||[];
+  const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+  const rng=w.length?`${fmtDate(w[0].key)} – ${fmtDate(w[w.length-1].key)}`:'';
+  doc.setFontSize(14).setFont('helvetica','bold').text('Glucose Wochenübersicht',14,14);
+  doc.setFontSize(9).setFont('helvetica','normal').text(`Zeitraum: ${rng}`,14,21);
+  const rows=w.map(r=>[r.label,r.preAm??'-',r.plus6??'-',r.plus8??'-',r.prePm??'-',r.min!==null?`${r.min} (${r.minT})`:'-',r.note]);
+  doc.autoTable({
+    head:[['Tag','Pre AM','+6h','+8h','Pre PM','Tiefstwert','Notiz']],
+    body:rows,startY:26,theme:'grid',styles:{fontSize:8,cellPadding:2.5},
+    headStyles:{fillColor:[29,158,117],textColor:[255,255,255]},
+    didParseCell(d){
+      if(d.section==='body'&&[2,3,4,5].includes(d.column.index)){
+        const v=parseInt(d.cell.text[0]);
+        if(!isNaN(v)){
+          if(v<80) d.cell.styles.fillColor=[254,226,226];
+          else if(v<=150) d.cell.styles.fillColor=[220,252,231];
+          else d.cell.styles.fillColor=[254,243,199];
+          d.cell.styles.fontStyle='bold';
+        }
+      }
+    }
+  });
+  doc.save(`Glucose_${rng.replace(/\s/g,'').replace(/\./g,'-')}.pdf`);
+});
+
+loadData();
+</script>
+</body>
+</html>
