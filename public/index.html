@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Glucose Tracker v7.0</title>
+<title>Glucose Tracker v8.0</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -70,7 +70,6 @@ tbody tr:hover td{background:#fafafa}
       Glucose Tracker
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn" id="addDayBtn"><i class="ti ti-calendar-plus"></i> Tag anlegen</button>
       <label class="btn btn-primary" style="cursor:pointer">
         <i class="ti ti-upload"></i> CSV importieren
         <input type="file" accept=".csv" id="csvInput" style="display:none">
@@ -147,8 +146,11 @@ function buildWeeks(){
     const key=`${y}-${mo}-${dy}`;
     const pts=daysMap[key]||[];
     const findNear=h=>{
-      if(!pts.length) return null;
-      const p=pts.reduce((a,b)=>Math.abs(b.h-h)<Math.abs(a.h-h)?b:a);
+      const valid=pts.filter(p=>!p.deleted);
+      if(!valid.length) return null;
+      const deleted=pts.find(p=>p.deleted&&p.h===h);
+      if(deleted) return null;
+      const p=valid.reduce((a,b)=>Math.abs(b.h-h)<Math.abs(a.h-h)?b:a);
       return Math.abs(p.h-h)<=2?p.v:null;
     };
     const manualMin=pts.find(p=>p.manual);
@@ -254,9 +256,12 @@ async function commitEdit(){
     }
   } else {
     const t=String(h).padStart(2,'0')+':00';
-    allData=allData.filter(p=>!(p.d===key&&p.h===h));
-    if(val!==''&&!isNaN(parseInt(val))){
-      allData.push({d:key,h,t,v:parseInt(val),id:key+'_'+t});
+    allData=allData.filter(p=>!(p.d===key&&p.h===h&&(p.manual||p.deleted)));
+    if(val===''||isNaN(parseInt(val))){
+      allData.push({d:key,h,t,v:null,id:key+'_del_'+h,deleted:true});
+    } else {
+      allData=allData.filter(p=>!(p.d===key&&p.h===h));
+      allData.push({d:key,h,t,v:parseInt(val),id:key+'_'+t,manual:true});
     }
   }
   buildWeeks(); renderTable();
@@ -327,12 +332,6 @@ $('csvInput').addEventListener('change',async e=>{
   e.target.value='';
 });
 
-
-$('addDayBtn').addEventListener('click',()=>{
-  const d=prompt('Datum (YYYY-MM-DD):');
-  if(!d||!/^\d{4}-\d{2}-\d{2}$/.test(d)){ toast('Ungültiges Format'); return; }
-  ensureToday(d);
-});
 
 function todayKey(){
   const n=new Date();
