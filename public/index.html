@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Glucose Tracker</title>
+<title>Glucose Tracker v4.0</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -150,7 +150,8 @@ function buildWeeks(){
       const p=pts.reduce((a,b)=>Math.abs(b.h-h)<Math.abs(a.h-h)?b:a);
       return Math.abs(p.h-h)<=2?p.v:null;
     };
-    const minPt=pts.length?pts.reduce((a,b)=>b.v<a.v?b:a):null;
+    const manualMin=pts.find(p=>p.manual);
+    const minPt=manualMin||(pts.length?pts.reduce((a,b)=>b.v<a.v?b:a):null);
     wk.push({key, label:`${dayName(key)}, ${fmtDate(key)}`, preAm:findNear(7), plus6:findNear(13), plus8:findNear(15), prePm:findNear(19), min:minPt?minPt.v:null, minT:minPt?minPt.t:null, pts, note:comments[key]||''});
     if(wk.length===7){ weeks.push(wk); wk=[]; }
     iter.setDate(iter.getDate()+1);
@@ -190,7 +191,7 @@ function renderTable(){
       <td>${cellHtml(r,'plus6')}</td>
       <td>${cellHtml(r,'plus8')}</td>
       <td>${cellHtml(r,'prePm')}</td>
-      <td>${r.min!==null?`<span class="val ${getClass(r.min)}">${r.min}</span><br><span style="font-size:10px;color:#9ca3af">${r.minT}</span>`:'-'}</td>
+      <td>${cellHtml(r,'min',true)}</td>
       <td><input class="note-input" placeholder="Notiz..." value="${(r.note||'').replace(/"/g,'&quot;')}" data-notekey="${r.key}"></td>
     </tr>`).join('');
 
@@ -243,11 +244,19 @@ async function commitEdit(){
   const inp=$('editInput'); if(!inp) return;
   const val=inp.value.trim();
   const{key,field}=editingCell; editingCell=null;
-  const hMap={preAm:7,plus6:13,plus8:15,prePm:19};
-  const h=hMap[field]; const t=`${String(h).padStart(2,'0')}:00`;
-  allData=allData.filter(p=>!(p.d===key&&p.h===h));
-  if(val!==''&&!isNaN(parseInt(val))){
-    allData.push({d:key,h,t,v:parseInt(val),id:`${key}_${t}`});
+  const hMap={preAm:7,plus6:13,plus8:15,prePm:19,min:3};
+  const h=hMap[field];
+  if(field==='min'){
+    allData=allData.filter(p=>!(p.d===key&&p.manual));
+    if(val!==''&&!isNaN(parseInt(val))){
+      allData.push({d:key,h:3,t:'03:00',v:parseInt(val),id:key+'_manual_min',manual:true});
+    }
+  } else {
+    const t=String(h).padStart(2,'0')+':00';
+    allData=allData.filter(p=>!(p.d===key&&p.h===h));
+    if(val!==''&&!isNaN(parseInt(val))){
+      allData.push({d:key,h,t,v:parseInt(val),id:key+'_'+t});
+    }
   }
   buildWeeks(); renderTable();
   await saveData(); toast('Gespeichert ✓');
