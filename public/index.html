@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Glucose Tracker v5.0</title>
+<title>Glucose Tracker v6.0</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -268,10 +268,19 @@ async function loadData(){
     if(!r.ok) throw new Error(r.status);
     const j=await r.json();
     allData=j.data||[]; comments=j.comments||{};
-    buildWeeks(); currentWeek=Math.max(0,weeks.length-1); renderTable();
+    ensureTodayLoaded();
   }catch(e){
     toast('Server schläft noch – bitte in 30 Sek. neu laden.',4000);
   }
+}
+
+function ensureTodayLoaded(){
+  const key=todayKey();
+  if(!comments[key]) comments[key]='';
+  buildWeeks();
+  const wi=weeks.findIndex(w=>w.some(r=>r.key===key));
+  currentWeek=wi>=0?wi:Math.max(0,weeks.length-1);
+  renderTable();
 }
 
 async function saveData(){
@@ -321,12 +330,23 @@ $('csvInput').addEventListener('change',async e=>{
 $('addDayBtn').addEventListener('click',()=>{
   const d=prompt('Datum (YYYY-MM-DD):');
   if(!d||!/^\d{4}-\d{2}-\d{2}$/.test(d)){ toast('Ungültiges Format'); return; }
-  if(!comments[d]) comments[d]='';
-  buildWeeks(); renderTable(); saveData();
-  const wi=weeks.findIndex(w=>w.some(r=>r.key===d));
-  if(wi>=0){ currentWeek=wi; renderTable(); }
-  toast('Tag angelegt');
+  ensureToday(d);
 });
+
+function todayKey(){
+  const n=new Date();
+  return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');
+}
+
+function ensureToday(key){
+  if(!key) key=todayKey();
+  if(!comments[key]) comments[key]='';
+  buildWeeks();
+  const wi=weeks.findIndex(w=>w.some(r=>r.key===key));
+  if(wi>=0) currentWeek=wi;
+  renderTable();
+  saveData();
+}
 
 $('exportBtn').addEventListener('click',()=>{
   const jsPDF=window.jspdf?.jsPDF;
