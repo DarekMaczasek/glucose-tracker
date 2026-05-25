@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Glucose Tracker v9.0</title>
+<title>Glucose Tracker v10.0</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -153,8 +153,9 @@ function buildWeeks(){
       const p=valid.reduce((a,b)=>Math.abs(b.h-h)<Math.abs(a.h-h)?b:a);
       return Math.abs(p.h-h)<=2?p.v:null;
     };
-    const manualMin=pts.find(p=>p.manual);
-    const minPt=manualMin||(pts.length?pts.reduce((a,b)=>b.v<a.v?b:a):null);
+    const manualMin=pts.find(p=>p.isManualMin);
+    const validPts=pts.filter(p=>!p.deleted&&!p.isManualMin);
+    const minPt=manualMin||(validPts.length?validPts.reduce((a,b)=>b.v<a.v?b:a):null);
     wk.push({key, label:`${dayName(key)}, ${fmtDate(key)}`, preAm:findNear(7), plus6:findNear(13), plus8:findNear(15), prePm:findNear(19), min:minPt?minPt.v:null, minT:minPt?minPt.t:null, pts, note:comments[key]||''});
     if(wk.length===7){ weeks.push(wk); wk=[]; }
     iter.setDate(iter.getDate()+1);
@@ -250,9 +251,9 @@ async function commitEdit(){
   const hMap={preAm:7,plus6:13,plus8:15,prePm:19,min:3};
   const h=hMap[field];
   if(field==='min'){
-    allData=allData.filter(p=>!(p.d===key&&p.manual));
+    allData=allData.filter(p=>!(p.d===key&&p.isManualMin));
     if(val!==''&&!isNaN(parseInt(val))){
-      allData.push({d:key,h:3,t:'03:00',v:parseInt(val),id:key+'_manual_min',manual:true});
+      allData.push({d:key,h:3,t:'03:00',v:parseInt(val),id:key+'_manual_min',isManualMin:true});
     }
   } else {
     const t=String(h).padStart(2,'0')+':00';
